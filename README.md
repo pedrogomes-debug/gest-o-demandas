@@ -35,18 +35,14 @@ na Vercel.
    O `supabase/seed.sql` tem dados de exemplo e só roda no banco local
    (`supabase db reset`) — não vai para produção.
 
-3. **Auth.** Em Authentication > Providers > Email, deixe o cadastro aberto
-   (Allow new users to sign up). Para entrar sem confirmar e-mail, desligue
-   "Confirm email". O trigger `trg_vincular_pessoa` casa o login novo com a
-   linha de `pessoas` pelo e-mail.
+3. **Variáveis.** Copie `.env.local.example` para `.env.local` e preencha com
+   os valores de Project Settings > API. O app não exige login: quem tem a URL
+   acessa. Ajuste as policies se um dia quiser fechar o acesso.
 
-4. **Variáveis.** Copie `.env.local.example` para `.env.local` e preencha com
-   os valores de Project Settings > API.
-
-5. **Verificar.**
+4. **Verificar.**
 
    ```sh
-   npm run smoke   # banco no ar, schema aplicado, RLS barrando a chave anônima
+   npm run smoke
    npm run dev
    ```
 
@@ -54,13 +50,10 @@ na Vercel.
 
 ```
 src/
-  proxy.ts            renova a sessão e barra quem não está logado
   app/
-    login/            e-mail e senha (entrar / cadastrar)
-    auth/callback/    confirmação de e-mail (se estiver ligada no Supabase)
-    (app)/            tudo que exige login: layout, clientes, pessoas
+    (app)/            clientes, pessoas (e depois kanban/gantt)
   lib/
-    supabase/         clientes do browser, do servidor e do proxy
+    supabase/         clientes do browser e do servidor
     types.ts          Status, Cliente, Pessoa, Demanda, DemandaView
   components/
     estilos.ts        classes Tailwind compartilhadas
@@ -69,21 +62,14 @@ supabase/
   migrations/         fonte da verdade do banco
   seed.sql            dados de exemplo, só no banco local
 scripts/
-  smoke.mjs           verificação de conectividade e RLS
+  smoke.mjs           verificação de conectividade
 ```
 
 ## Autenticação
 
-Login e cadastro com e-mail e senha. O formulário em `/login` tem duas abas:
-Entrar (`signInWithPassword`) e Cadastrar (`signUp`).
-
-Para o cadastro funcionar de ponta a ponta sem e-mail de confirmação, no
-painel do Supabase desligue **Confirm email** em Authentication > Providers >
-Email. Com a confirmação ligada, a conta é criada e o usuário precisa confirmar
-antes de entrar.
-
-O proxy usa `getUser()`, não `getSession()`: só o primeiro revalida o token
-contra o servidor do Supabase.
+Sem login no MVP. O RLS libera a chave anônima (`anon`) para ler e escrever.
+A URL da Vercel funciona como “porta”: quem conhece, usa. Se precisar trancar
+depois, volte as policies para `authenticated` e reative o fluxo de auth.
 
 ## Convenções
 

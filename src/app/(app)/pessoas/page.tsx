@@ -20,8 +20,7 @@ export default async function PaginaPessoas() {
       <div>
         <h1 className="text-lg font-semibold text-neutral-900">Pessoas</h1>
         <p className="text-sm text-neutral-500">
-          Cadastre a equipe aqui para atribuir demandas. O login fica em /login (e-mail e senha). O
-          vínculo com a conta acontece pelo e-mail no primeiro acesso.
+          Cadastre a equipe aqui para atribuir demandas.
         </p>
       </div>
 

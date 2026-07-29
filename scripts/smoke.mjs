@@ -1,5 +1,4 @@
-// Verificação da fase 0: o banco responde, o schema está no ar e o RLS
-// está barrando a chave anônima.
+// Verificação: o banco responde e a chave anônima consegue ler (app sem login).
 //
 //   npm run smoke
 
@@ -25,18 +24,13 @@ if (!url || !anonKey) {
 let falhou = false;
 
 const anon = createClient(url, anonKey);
-const { data: comoAnon, error: erroAnon } = await anon.from("v_demandas").select("id");
+const { error: erroAnon } = await anon.from("v_demandas").select("id").limit(1);
 
 if (erroAnon) {
-  console.log(`[ok]    anon bloqueado pelo RLS (${erroAnon.message})`);
-} else if (comoAnon.length > 0) {
-  console.error(
-    `[FALHA] anon leu ${comoAnon.length} demanda(s) de v_demandas. ` +
-      "Rode: alter view v_demandas set (security_invoker = on);",
-  );
+  console.error(`[FALHA] anon não consegue ler v_demandas: ${erroAnon.message}`);
   falhou = true;
 } else {
-  console.log("[ok]    anon não enxerga nenhuma demanda");
+  console.log("[ok]    anon lê v_demandas (app sem login)");
 }
 
 if (serviceKey) {
@@ -50,14 +44,6 @@ if (serviceKey) {
     } else {
       console.log(`[ok]    ${tabela}: ${count} linha(s)`);
     }
-  }
-
-  const { data: view, error: erroView } = await admin.from("v_demandas").select("*").limit(1);
-  if (erroView) {
-    console.error(`[FALHA] v_demandas: ${erroView.message}`);
-    falhou = true;
-  } else {
-    console.log(`[ok]    v_demandas responde: ${JSON.stringify(view[0] ?? null)}`);
   }
 } else {
   console.log("[pular] SUPABASE_SERVICE_ROLE_KEY ausente — contagem de linhas não verificada");
