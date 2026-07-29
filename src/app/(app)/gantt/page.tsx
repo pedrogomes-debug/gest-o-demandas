@@ -2,6 +2,7 @@ import Link from "next/link";
 import { campo } from "@/components/estilos";
 import { createClient } from "@/lib/supabase/server";
 import type { Cliente, DemandaView } from "@/lib/types";
+import { BarraGantt } from "./barra";
 
 export const metadata = { title: "Gantt" };
 
@@ -197,16 +198,7 @@ export default async function PaginaGantt({
                   <p className="truncate text-xs text-neutral-400">{demanda.cliente_nome}</p>
                 )}
               </div>
-              <div
-                className="my-2 flex items-center overflow-hidden rounded-sm px-2 text-[11px] text-white"
-                style={{
-                  gridColumn: `${inicio + 1} / ${fim + 2}`,
-                  background: demanda.cliente_cor ?? "#6B7280",
-                }}
-                title={`${demanda.data_inicio} → ${demanda.data_fim}`}
-              >
-                <span className="truncate">{demanda.titulo}</span>
-              </div>
+              <BarraGantt demanda={demanda} inicio={inicio} fim={fim} />
             </div>
           ))}
         </div>
