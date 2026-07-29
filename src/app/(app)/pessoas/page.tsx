@@ -10,8 +10,7 @@ export default async function PaginaPessoas() {
   const { data, error } = await supabase
     .from("pessoas")
     .select("*")
-    .order("ativo", { ascending: false })
-    .order("nome");
+    .order("nome", { ascending: true });
 
   const pessoas = (data ?? []) as Pessoa[];
 
