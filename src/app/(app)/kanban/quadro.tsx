@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition, type WheelEvent } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -101,17 +101,17 @@ function Coluna({
   return (
     <div
       ref={setNodeRef}
-      className={`flex min-h-80 min-w-64 flex-1 flex-col rounded-lg border border-neutral-200 bg-neutral-50 ${
+      className={`flex h-[calc(100vh-11rem)] w-72 shrink-0 flex-col rounded-lg border border-neutral-200 bg-neutral-50 ${
         isOver ? "ring-2 ring-neutral-400" : ""
       }`}
     >
-      <div className="flex items-center justify-between border-b border-neutral-200 px-3 py-2">
+      <div className="flex shrink-0 items-center justify-between border-b border-neutral-200 px-3 py-2">
         <h2 className="text-sm font-semibold text-neutral-800">{STATUS_LABEL[status]}</h2>
         <span className="text-xs text-neutral-400">{demandas.length}</span>
       </div>
 
       <SortableContext items={demandas.map((d) => d.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-1 flex-col gap-2 p-2">
+        <div data-coluna-scroll className="flex flex-1 flex-col gap-2 overflow-y-auto p-2">
           {demandas.map((demanda) => (
             <CardSortable key={demanda.id} demanda={demanda} />
           ))}
@@ -129,6 +129,7 @@ export function QuadroKanban({ iniciais }: { iniciais: DemandaView[] }) {
   const [ativoId, setAtivoId] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+  const trilhaRef = useRef<HTMLDivElement>(null);
 
   const sensores = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -203,6 +204,26 @@ export function QuadroKanban({ iniciais }: { iniciais: DemandaView[] }) {
     });
   }
 
+  // Rolinha do mouse vira scroll lateral contínuo no quadro.
+  function aoRolar(evento: WheelEvent<HTMLDivElement>) {
+    const el = trilhaRef.current;
+    if (!el) return;
+    if (Math.abs(evento.deltaY) <= Math.abs(evento.deltaX)) return;
+
+    const alvo = evento.target as HTMLElement | null;
+    const colunaScroll = alvo?.closest?.("[data-coluna-scroll]");
+    if (colunaScroll && colunaScroll.scrollHeight > colunaScroll.clientHeight) {
+      const noTopo = colunaScroll.scrollTop <= 0 && evento.deltaY < 0;
+      const noFim =
+        colunaScroll.scrollTop + colunaScroll.clientHeight >= colunaScroll.scrollHeight - 1 &&
+        evento.deltaY > 0;
+      if (!noTopo && !noFim) return;
+    }
+
+    evento.preventDefault();
+    el.scrollLeft += evento.deltaY;
+  }
+
   return (
     <div className="space-y-3">
       {erro && (
@@ -214,11 +235,18 @@ export function QuadroKanban({ iniciais }: { iniciais: DemandaView[] }) {
         collisionDetection={closestCorners}
         onDragStart={aoIniciar}
         onDragEnd={aoTerminar}
+        autoScroll={{ threshold: { x: 0.15, y: 0.15 } }}
       >
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {STATUS.map((status) => (
-            <Coluna key={status} status={status} demandas={porStatus[status]} />
-          ))}
+        <div
+          ref={trilhaRef}
+          onWheel={aoRolar}
+          className="-mx-6 overflow-x-auto overscroll-x-contain px-6 pb-3 [scrollbar-gutter:stable]"
+        >
+          <div className="flex w-max gap-3 pr-[40vw]">
+            {STATUS.map((status) => (
+              <Coluna key={status} status={status} demandas={porStatus[status]} />
+            ))}
+          </div>
         </div>
 
         <DragOverlay>{ativo ? <Card demanda={ativo} arrastando /> : null}</DragOverlay>
