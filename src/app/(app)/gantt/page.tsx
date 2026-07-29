@@ -3,6 +3,7 @@ import { campo } from "@/components/estilos";
 import { createClient } from "@/lib/supabase/server";
 import type { Cliente, DemandaView } from "@/lib/types";
 import { BarraGantt } from "./barra";
+import { TrilhaGantt } from "./trilha";
 
 export const metadata = { title: "Gantt" };
 
@@ -61,7 +62,7 @@ export default async function PaginaGantt({
   const totalDias = diasNoMes(ano, mes);
   const grade = {
     display: "grid",
-    gridTemplateColumns: `200px repeat(${totalDias}, 32px)`,
+    gridTemplateColumns: `220px repeat(${totalDias}, 48px)`,
   } as const;
 
   let erro: string | null = null;
@@ -178,7 +179,7 @@ export default async function PaginaGantt({
           .
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
+        <TrilhaGantt>
           <div style={grade} className="border-b border-neutral-200 bg-neutral-50">
             <div className="sticky left-0 z-10 border-r border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-500">
               Demanda
@@ -201,7 +202,7 @@ export default async function PaginaGantt({
               <BarraGantt demanda={demanda} inicio={inicio} fim={fim} />
             </div>
           ))}
-        </div>
+        </TrilhaGantt>
       )}
     </div>
   );
