@@ -20,8 +20,8 @@ export default async function PaginaPessoas() {
       <div>
         <h1 className="text-lg font-semibold text-neutral-900">Pessoas</h1>
         <p className="text-sm text-neutral-500">
-          Cadastrar aqui não dá acesso ao sistema. O convite é enviado pelo painel do Supabase, em
-          Authentication &gt; Users, e o vínculo acontece pelo e-mail no primeiro login.
+          Cadastre a equipe aqui para atribuir demandas. O login fica em /login (e-mail e senha). O
+          vínculo com a conta acontece pelo e-mail no primeiro acesso.
         </p>
       </div>
 

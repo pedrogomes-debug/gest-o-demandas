@@ -35,10 +35,10 @@ na Vercel.
    O `supabase/seed.sql` tem dados de exemplo e só roda no banco local
    (`supabase db reset`) — não vai para produção.
 
-3. **Fechar o cadastro.** Em Authentication > Sign In / Providers, desligue
-   "Allow new users to sign up". A equipe entra por convite manual em
-   Authentication > Users > Invite. O trigger `trg_vincular_pessoa` casa o
-   login novo com a linha de `pessoas` pelo e-mail.
+3. **Auth.** Em Authentication > Providers > Email, deixe o cadastro aberto
+   (Allow new users to sign up). Para entrar sem confirmar e-mail, desligue
+   "Confirm email". O trigger `trg_vincular_pessoa` casa o login novo com a
+   linha de `pessoas` pelo e-mail.
 
 4. **Variáveis.** Copie `.env.local.example` para `.env.local` e preencha com
    os valores de Project Settings > API.
@@ -56,8 +56,8 @@ na Vercel.
 src/
   proxy.ts            renova a sessão e barra quem não está logado
   app/
-    login/            magic link
-    auth/callback/    troca o link pela sessão
+    login/            e-mail e senha (entrar / cadastrar)
+    auth/callback/    confirmação de e-mail (se estiver ligada no Supabase)
     (app)/            tudo que exige login: layout, clientes, pessoas
   lib/
     supabase/         clientes do browser, do servidor e do proxy
@@ -74,15 +74,13 @@ scripts/
 
 ## Autenticação
 
-Login por magic link, sem senha. O `signInWithOtp` usa `shouldCreateUser: false`,
-então digitar um e-mail não cadastrado não cria conta — a entrada da equipe é
-sempre por convite em Authentication > Users.
+Login e cadastro com e-mail e senha. O formulário em `/login` tem duas abas:
+Entrar (`signInWithPassword`) e Cadastrar (`signUp`).
 
-O `/auth/callback` aceita tanto `?code=` (template de e-mail padrão do Supabase,
-fluxo PKCE) quanto `?token_hash=&type=`. Se algum dia quiser abrir o link num
-navegador diferente daquele que pediu o acesso, troque o template de e-mail para
-`{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email`, que
-dispensa o code verifier guardado no cookie.
+Para o cadastro funcionar de ponta a ponta sem e-mail de confirmação, no
+painel do Supabase desligue **Confirm email** em Authentication > Providers >
+Email. Com a confirmação ligada, a conta é criada e o usuário precisa confirmar
+antes de entrar.
 
 O proxy usa `getUser()`, não `getSession()`: só o primeiro revalida o token
 contra o servidor do Supabase.
