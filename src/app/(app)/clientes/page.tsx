@@ -6,13 +6,20 @@ import { LinhaCliente, NovoCliente } from "./formularios";
 export const metadata = { title: "Clientes" };
 
 export default async function PaginaClientes() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("clientes")
-    .select("*")
-    .order("nome", { ascending: true });
+  let clientes: Cliente[] = [];
+  let erro: string | null = null;
 
-  const clientes = (data ?? []) as Cliente[];
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("*")
+      .order("nome", { ascending: true });
+    clientes = (data ?? []) as Cliente[];
+    erro = error?.message ?? null;
+  } catch (e) {
+    erro = e instanceof Error ? e.message : "Falha ao conectar no Supabase.";
+  }
 
   return (
     <div className="space-y-6">
@@ -25,8 +32,8 @@ export default async function PaginaClientes() {
 
       <NovoCliente />
 
-      {error && (
-        <p className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{error.message}</p>
+      {erro && (
+        <p className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{erro}</p>
       )}
 
       <div className={`${cartao} overflow-hidden`}>
@@ -43,7 +50,7 @@ export default async function PaginaClientes() {
             {clientes.map((cliente) => (
               <LinhaCliente key={cliente.id} cliente={cliente} />
             ))}
-            {clientes.length === 0 && !error && (
+            {clientes.length === 0 && !erro && (
               <tr className="border-t border-neutral-200">
                 <td colSpan={4} className="px-4 py-8 text-center text-sm text-neutral-500">
                   Nenhum cliente ainda.
