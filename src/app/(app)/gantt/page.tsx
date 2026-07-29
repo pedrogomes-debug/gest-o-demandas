@@ -2,8 +2,7 @@ import Link from "next/link";
 import { campo } from "@/components/estilos";
 import { createClient } from "@/lib/supabase/server";
 import type { Cliente, DemandaView } from "@/lib/types";
-import { BarraGantt } from "./barra";
-import { TrilhaGantt } from "./trilha";
+import { QuadroGantt } from "./quadro";
 
 export const metadata = { title: "Gantt" };
 
@@ -60,10 +59,6 @@ export default async function PaginaGantt({
   const { ano, mes } = parseMes(filtros.mes);
   const mesAtual = `${ano}-${String(mes).padStart(2, "0")}`;
   const totalDias = diasNoMes(ano, mes);
-  const grade = {
-    display: "grid",
-    gridTemplateColumns: `220px repeat(${totalDias}, 48px)`,
-  } as const;
 
   let erro: string | null = null;
   let demandas: DemandaView[] = [];
@@ -103,7 +98,7 @@ export default async function PaginaGantt({
       <div>
         <h1 className="text-lg font-semibold text-neutral-900">Gantt</h1>
         <p className="text-sm text-neutral-500">
-          Barras a partir de data início e data fim. Edite as datas em Demandas.
+          Um dia por coluna, no mesmo estilo do kanban. Role para o lado para ver o mês.
         </p>
       </div>
 
@@ -179,30 +174,7 @@ export default async function PaginaGantt({
           .
         </p>
       ) : (
-        <TrilhaGantt>
-          <div style={grade} className="border-b border-neutral-200 bg-neutral-50">
-            <div className="sticky left-0 z-10 border-r border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-500">
-              Demanda
-            </div>
-            {Array.from({ length: totalDias }, (_, i) => (
-              <div key={i} className="py-2 text-center text-[10px] text-neutral-400">
-                {i + 1}
-              </div>
-            ))}
-          </div>
-
-          {comDatas.map(({ demanda, inicio, fim }) => (
-            <div key={demanda.id} style={grade} className="border-b border-neutral-100">
-              <div className="sticky left-0 z-10 border-r border-neutral-100 bg-white px-3 py-2">
-                <p className="truncate text-sm text-neutral-800">{demanda.titulo}</p>
-                {demanda.cliente_nome && (
-                  <p className="truncate text-xs text-neutral-400">{demanda.cliente_nome}</p>
-                )}
-              </div>
-              <BarraGantt demanda={demanda} inicio={inicio} fim={fim} />
-            </div>
-          ))}
-        </TrilhaGantt>
+        <QuadroGantt ano={ano} mes={mes} totalDias={totalDias} itens={comDatas} />
       )}
     </div>
   );
