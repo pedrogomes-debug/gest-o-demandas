@@ -45,6 +45,8 @@ export async function criarDemanda(
   if (error) return { erro: error.message };
 
   revalidatePath("/demandas");
+  revalidatePath("/kanban");
+  revalidatePath("/gantt");
   return {};
 }
 
@@ -66,6 +68,8 @@ export async function salvarDemanda(
   if (error) return { erro: error.message };
 
   revalidatePath("/demandas");
+  revalidatePath("/kanban");
+  revalidatePath("/gantt");
   return {};
 }
 
@@ -82,5 +86,7 @@ export async function excluirDemanda(
   if (error) return { erro: error.message };
 
   revalidatePath("/demandas");
+  revalidatePath("/kanban");
+  revalidatePath("/gantt");
   return {};
 }

@@ -18,8 +18,16 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { STATUS, STATUS_LABEL, type DemandaView, type Status } from "@/lib/types";
+import {
+  STATUS,
+  STATUS_LABEL,
+  type Cliente,
+  type DemandaView,
+  type Pessoa,
+  type Status,
+} from "@/lib/types";
 import { moverDemanda } from "./actions";
+import { ModalDemanda } from "./modal";
 
 function calcularOrdem(
   acima: DemandaView | undefined,
@@ -63,7 +71,13 @@ function Card({
   );
 }
 
-function CardSortable({ demanda }: { demanda: DemandaView }) {
+function CardSortable({
+  demanda,
+  onAbrir,
+}: {
+  demanda: DemandaView;
+  onAbrir: (demanda: DemandaView) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: demanda.id,
     data: { type: "card", demanda },
@@ -77,9 +91,13 @@ function CardSortable({ demanda }: { demanda: DemandaView }) {
         transition,
         opacity: isDragging ? 0.35 : 1,
       }}
-      className="touch-none"
+      className="touch-none cursor-grab active:cursor-grabbing"
       {...attributes}
       {...listeners}
+      onClick={() => {
+        if (isDragging) return;
+        onAbrir(demanda);
+      }}
     >
       <Card demanda={demanda} />
     </div>
@@ -89,9 +107,11 @@ function CardSortable({ demanda }: { demanda: DemandaView }) {
 function Coluna({
   status,
   demandas,
+  onAbrir,
 }: {
   status: Status;
   demandas: DemandaView[];
+  onAbrir: (demanda: DemandaView) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: status,
@@ -113,7 +133,7 @@ function Coluna({
       <SortableContext items={demandas.map((d) => d.id)} strategy={verticalListSortingStrategy}>
         <div data-coluna-scroll className="flex flex-1 flex-col gap-2 overflow-y-auto p-2">
           {demandas.map((demanda) => (
-            <CardSortable key={demanda.id} demanda={demanda} />
+            <CardSortable key={demanda.id} demanda={demanda} onAbrir={onAbrir} />
           ))}
           {demandas.length === 0 && (
             <p className="px-1 py-6 text-center text-xs text-neutral-400">Solte aqui</p>
@@ -124,15 +144,25 @@ function Coluna({
   );
 }
 
-export function QuadroKanban({ iniciais }: { iniciais: DemandaView[] }) {
+export function QuadroKanban({
+  iniciais,
+  clientes,
+  pessoas,
+}: {
+  iniciais: DemandaView[];
+  clientes: Pick<Cliente, "id" | "nome" | "cor">[];
+  pessoas: Pick<Pessoa, "id" | "nome">[];
+}) {
   const [demandas, setDemandas] = useState(iniciais);
   const [ativoId, setAtivoId] = useState<string | null>(null);
+  const [selecionadaId, setSelecionadaId] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const trilhaRef = useRef<HTMLDivElement>(null);
+  const arrastando = useRef(false);
 
   const sensores = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
   const porStatus = useMemo(() => {
@@ -150,14 +180,21 @@ export function QuadroKanban({ iniciais }: { iniciais: DemandaView[] }) {
   }, [demandas]);
 
   const ativo = demandas.find((d) => d.id === ativoId) ?? null;
+  const selecionada = demandas.find((d) => d.id === selecionadaId) ?? null;
 
   function aoIniciar(evento: DragStartEvent) {
+    arrastando.current = true;
     setAtivoId(String(evento.active.id));
     setErro(null);
   }
 
   function aoTerminar(evento: DragEndEvent) {
     setAtivoId(null);
+    // Evita abrir o modal no mouseup após um arrasto.
+    setTimeout(() => {
+      arrastando.current = false;
+    }, 0);
+
     const { active, over } = evento;
     if (!over) return;
 
@@ -204,7 +241,6 @@ export function QuadroKanban({ iniciais }: { iniciais: DemandaView[] }) {
     });
   }
 
-  // Rolinha do mouse vira scroll lateral contínuo no quadro.
   function aoRolar(evento: WheelEvent<HTMLDivElement>) {
     const el = trilhaRef.current;
     if (!el) return;
@@ -222,6 +258,11 @@ export function QuadroKanban({ iniciais }: { iniciais: DemandaView[] }) {
 
     evento.preventDefault();
     el.scrollLeft += evento.deltaY;
+  }
+
+  function abrirDetalhe(demanda: DemandaView) {
+    if (arrastando.current) return;
+    setSelecionadaId(demanda.id);
   }
 
   return (
@@ -244,13 +285,35 @@ export function QuadroKanban({ iniciais }: { iniciais: DemandaView[] }) {
         >
           <div className="flex w-max gap-3 pr-[40vw]">
             {STATUS.map((status) => (
-              <Coluna key={status} status={status} demandas={porStatus[status]} />
+              <Coluna
+                key={status}
+                status={status}
+                demandas={porStatus[status]}
+                onAbrir={abrirDetalhe}
+              />
             ))}
           </div>
         </div>
 
         <DragOverlay>{ativo ? <Card demanda={ativo} arrastando /> : null}</DragOverlay>
       </DndContext>
+
+      {selecionada && (
+        <ModalDemanda
+          demanda={selecionada}
+          clientes={clientes}
+          pessoas={pessoas}
+          onFechar={() => setSelecionadaId(null)}
+          onSalvou={(atualizada) => {
+            setDemandas((lista) =>
+              lista.map((d) => (d.id === atualizada.id ? { ...d, ...atualizada } : d)),
+            );
+          }}
+          onExcluiu={(id) => {
+            setDemandas((lista) => lista.filter((d) => d.id !== id));
+          }}
+        />
+      )}
     </div>
   );
 }

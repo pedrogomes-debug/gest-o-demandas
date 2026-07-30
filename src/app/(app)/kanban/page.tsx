@@ -13,14 +13,14 @@ export default async function PaginaKanban({
 }) {
   const filtros = await searchParams;
   let demandas: DemandaView[] = [];
-  let clientes: Pick<Cliente, "id" | "nome">[] = [];
+  let clientes: Pick<Cliente, "id" | "nome" | "cor">[] = [];
   let pessoas: Pick<Pessoa, "id" | "nome">[] = [];
   let erro: string | null = null;
 
   try {
     const supabase = await createClient();
     const [resClientes, resPessoas, resDemandas] = await Promise.all([
-      supabase.from("clientes").select("id, nome").eq("ativo", true).order("nome"),
+      supabase.from("clientes").select("id, nome, cor").eq("ativo", true).order("nome"),
       supabase.from("pessoas").select("id, nome").eq("ativo", true).order("nome"),
       supabase.from("v_demandas").select("*").order("status").order("ordem", { ascending: true }),
     ]);
@@ -118,7 +118,12 @@ export default async function PaginaKanban({
             : "Nenhuma demanda ainda. Crie em Demandas para aparecer aqui."}
         </p>
       ) : (
-        <QuadroKanban key={`${filtros.cliente ?? ""}-${filtros.responsavel ?? ""}`} iniciais={demandas} />
+        <QuadroKanban
+          key={`${filtros.cliente ?? ""}-${filtros.responsavel ?? ""}`}
+          iniciais={demandas}
+          clientes={clientes}
+          pessoas={pessoas}
+        />
       )}
     </div>
   );
