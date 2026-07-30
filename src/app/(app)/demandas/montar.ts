@@ -29,18 +29,19 @@ export async function montarDemandaPorTexto(
   if (!pedido) return { ok: false, erro: "Escreva o que precisa ser feito." };
   if (pedido.length > 2000) return { ok: false, erro: "Texto muito longo (máx. 2000 caracteres)." };
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return {
       ok: false,
       erro:
-        "Falta OPENAI_API_KEY no ambiente (Vercel → Environment Variables, e .env.local no seu Mac).",
+        "Falta GEMINI_API_KEY no ambiente (Vercel → Environment Variables, e .env.local no Mac). Pegue em https://aistudio.google.com/apikey",
     };
   }
 
+  const modelo = process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
   const hoje = new Date().toISOString().slice(0, 10);
 
-  const system = `Você extrai campos de uma demanda de trabalho a partir de texto em português.
+  const prompt = `Você extrai campos de uma demanda de trabalho a partir de texto em português.
 Responda APENAS com JSON válido, sem markdown, neste formato:
 {
   "titulo": string,
@@ -59,23 +60,23 @@ Regras:
 - datas relativas ("amanhã", "semana que vem", "até sexta") devem virar YYYY-MM-DD. Hoje é ${hoje}.
 - cliente_nome e responsavel_nome devem preferir nomes da lista abaixo (match aproximado). Se não houver match, use o nome citado ou null.
 - Clientes conhecidos: ${JSON.stringify(contexto.clientes)}
-- Pessoas conhecidas: ${JSON.stringify(contexto.pessoas)}`;
+- Pessoas conhecidas: ${JSON.stringify(contexto.pessoas)}
+
+Texto do usuário:
+${pedido}`;
 
   try {
-    const resposta = await fetch("https://api.openai.com/v1/chat/completions", {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+    const resposta = await fetch(url, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: pedido },
-        ],
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: "application/json",
+        },
       }),
     });
 
@@ -83,17 +84,17 @@ Regras:
       const corpo = await resposta.text();
       return {
         ok: false,
-        erro: `OpenAI falhou (${resposta.status}): ${corpo.slice(0, 200)}`,
+        erro: `Gemini falhou (${resposta.status}): ${corpo.slice(0, 240)}`,
       };
     }
 
     const json = (await resposta.json()) as {
-      choices?: { message?: { content?: string } }[];
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
     };
-    const bruto = json.choices?.[0]?.message?.content;
-    if (!bruto) return { ok: false, erro: "A IA não devolveu conteúdo." };
+    const bruto = json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+    if (!bruto) return { ok: false, erro: "O Gemini não devolveu conteúdo." };
 
-    const parseado = JSON.parse(bruto) as Partial<RascunhoDemanda>;
+    const parseado = JSON.parse(limparJson(bruto)) as Partial<RascunhoDemanda>;
     const status = (STATUS as readonly string[]).includes(String(parseado.status))
       ? (parseado.status as Status)
       : "backlog";
@@ -118,6 +119,14 @@ Regras:
       erro: e instanceof Error ? e.message : "Falha ao montar a demanda.",
     };
   }
+}
+
+function limparJson(bruto: string) {
+  const t = bruto.trim();
+  if (t.startsWith("```")) {
+    return t.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  }
+  return t;
 }
 
 function normalizarData(valor: unknown): string | null {
