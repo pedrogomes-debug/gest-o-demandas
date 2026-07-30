@@ -1,44 +1,124 @@
+import Link from "next/link";
+import { campo } from "@/components/estilos";
 import { createClient } from "@/lib/supabase/server";
-import type { DemandaView } from "@/lib/types";
+import type { Cliente, DemandaView, Pessoa } from "@/lib/types";
 import { QuadroKanban } from "./quadro";
 
 export const metadata = { title: "Kanban" };
 
-export default async function PaginaKanban() {
+export default async function PaginaKanban({
+  searchParams,
+}: {
+  searchParams: Promise<{ cliente?: string; responsavel?: string }>;
+}) {
+  const filtros = await searchParams;
   let demandas: DemandaView[] = [];
+  let clientes: Pick<Cliente, "id" | "nome">[] = [];
+  let pessoas: Pick<Pessoa, "id" | "nome">[] = [];
   let erro: string | null = null;
 
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("v_demandas")
-      .select("*")
-      .order("status")
-      .order("ordem", { ascending: true });
+    const [resClientes, resPessoas, resDemandas] = await Promise.all([
+      supabase.from("clientes").select("id, nome").eq("ativo", true).order("nome"),
+      supabase.from("pessoas").select("id, nome").eq("ativo", true).order("nome"),
+      supabase.from("v_demandas").select("*").order("status").order("ordem", { ascending: true }),
+    ]);
 
-    if (error) throw new Error(error.message);
-    demandas = (data ?? []) as DemandaView[];
+    if (resClientes.error) throw new Error(resClientes.error.message);
+    if (resPessoas.error) throw new Error(resPessoas.error.message);
+    if (resDemandas.error) throw new Error(resDemandas.error.message);
+
+    clientes = resClientes.data ?? [];
+    pessoas = resPessoas.data ?? [];
+    demandas = ((resDemandas.data ?? []) as DemandaView[]).filter((d) => {
+      if (filtros.cliente && d.cliente_id !== filtros.cliente) return false;
+      if (filtros.responsavel && d.responsavel_id !== filtros.responsavel) return false;
+      return true;
+    });
   } catch (e) {
     erro = e instanceof Error ? e.message : "Falha ao carregar o kanban.";
   }
 
+  const temFiltro = Boolean(filtros.cliente || filtros.responsavel);
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold text-neutral-900">Kanban</h1>
-        <p className="text-sm text-neutral-500">
-          Arraste os cards entre colunas. Persiste status e ordem na mesma tabela de demandas.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-neutral-900">Kanban</h1>
+          <p className="text-sm text-neutral-500">
+            Arraste os cards entre colunas. Persiste status e ordem na mesma tabela de demandas.
+          </p>
+        </div>
+
+        <form className="flex flex-wrap items-end gap-3" method="get">
+          <div className="space-y-1">
+            <label htmlFor="filtro-cliente" className="block text-xs font-medium text-neutral-500">
+              Cliente
+            </label>
+            <select
+              id="filtro-cliente"
+              name="cliente"
+              defaultValue={filtros.cliente ?? ""}
+              className={`${campo} min-w-40`}
+            >
+              <option value="">Todos</option>
+              {clientes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label
+              htmlFor="filtro-responsavel"
+              className="block text-xs font-medium text-neutral-500"
+            >
+              Pessoa
+            </label>
+            <select
+              id="filtro-responsavel"
+              name="responsavel"
+              defaultValue={filtros.responsavel ?? ""}
+              className={`${campo} min-w-40`}
+            >
+              <option value="">Todas</option>
+              {pessoas.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700"
+          >
+            Filtrar
+          </button>
+
+          {temFiltro && (
+            <Link href="/kanban" className="pb-1.5 text-sm text-neutral-500 hover:text-neutral-900">
+              Limpar
+            </Link>
+          )}
+        </form>
       </div>
 
       {erro ? (
         <p className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{erro}</p>
       ) : demandas.length === 0 ? (
         <p className="text-sm text-neutral-500">
-          Nenhuma demanda ainda. Crie em Demandas para aparecer aqui.
+          {temFiltro
+            ? "Nenhuma demanda com esses filtros."
+            : "Nenhuma demanda ainda. Crie em Demandas para aparecer aqui."}
         </p>
       ) : (
-        <QuadroKanban iniciais={demandas} />
+        <QuadroKanban key={`${filtros.cliente ?? ""}-${filtros.responsavel ?? ""}`} iniciais={demandas} />
       )}
     </div>
   );

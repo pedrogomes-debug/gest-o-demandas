@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type UIEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import { STATUS_LABEL, type DemandaView } from "@/lib/types";
@@ -126,9 +125,11 @@ function Barra({
 export function QuadroGantt({
   demandas,
   clienteId,
+  responsavelId,
 }: {
   demandas: DemandaView[];
   clienteId?: string;
+  responsavelId?: string;
 }) {
   const trilhaRef = useRef<HTMLDivElement>(null);
   const ancorado = useRef(false);
@@ -137,17 +138,24 @@ export function QuadroGantt({
   const filtradas = useMemo(
     () =>
       demandas.filter(
-        (d) => d.data_inicio && d.data_fim && (!clienteId || d.cliente_id === clienteId),
+        (d) =>
+          d.data_inicio &&
+          d.data_fim &&
+          (!clienteId || d.cliente_id === clienteId) &&
+          (!responsavelId || d.responsavel_id === responsavelId),
       ),
-    [demandas, clienteId],
+    [demandas, clienteId, responsavelId],
   );
 
   const semPrazo = useMemo(
     () =>
       demandas.filter(
-        (d) => (!d.data_inicio || !d.data_fim) && (!clienteId || d.cliente_id === clienteId),
+        (d) =>
+          (!d.data_inicio || !d.data_fim) &&
+          (!clienteId || d.cliente_id === clienteId) &&
+          (!responsavelId || d.responsavel_id === responsavelId),
       ),
-    [demandas, clienteId],
+    [demandas, clienteId, responsavelId],
   );
 
   const [inicioJanela, setInicioJanela] = useState(() =>
@@ -207,7 +215,7 @@ export function QuadroGantt({
     return () => el.removeEventListener("wheel", onWheel);
   }, [estender]);
 
-  function aoScroll(_evento: UIEvent<HTMLDivElement>) {
+  function aoScroll() {
     estender();
   }
 
